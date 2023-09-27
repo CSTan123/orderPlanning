@@ -53,11 +53,11 @@ class AllocProblem(Problem):
             #print("Replication", r)
             # reset problem settings
             for f in self.factory: f.reset()
-            projDemand = self.simDemand(T) #sample demand from distribution
+            projDemand = self.simDemand(T, seed=r) #sample demand from distribution
             #print()
-            completedOrder = self.simPlan(projDemand, alloc, minPHr, T) #simulate planning scenarios
+            completedOrder = self.simPlan(projDemand, alloc, minPHr, T, seed=r) #simulate planning scenarios
             #compute perf
-            lt, unUtilHr = self.computePref(completedOrder)
+            lt, unUtilHr = self.computePref(completedOrder, T)
             aveLT += lt
             aveUnUtilHr += unUtilHr
 
@@ -80,7 +80,8 @@ class AllocProblem(Problem):
 
         return alloc, minPHr
 
-    def simDemand(self, T):
+    def simDemand(self, T, seed=20):
+        np.random.seed(seed)
         # generate demand projection trajectory
         projDemand = np.zeros((self.p["nP"], self.p["nC"], T))
         for p in range(self.p["nP"]):
@@ -93,12 +94,14 @@ class AllocProblem(Problem):
 
         return projDemand
 
-    def simPlan(self, projDemand, alloc, minPHr, T):
+    def simPlan(self, projDemand, alloc, minPHr, T, seed=20):
+        np.random.seed(seed)
         completedOrder = []
+        for f in self.factory: f.reset()
         # print("======Simulation for proj demand======")
         # allocation of proj demand
         for t in range(0, T):
-            # print("Time", t)
+            #print("Time", t)
             for f in range(self.p["nF"]): self.factory[f].dailyOrderAlloc.append(0)
             for c in range(self.p["nC"]):
                 rand = np.random.rand()
@@ -109,11 +112,11 @@ class AllocProblem(Problem):
                         reqHr = (projDemand[:, c, t] / self.p["pRate"][:, f]).sum()
                         # allocate order
                         self.factory[f].activeOrder.append(obj.Order(c, t, reqHr, f))
-                        # print("Rand Num", round(rand, 2), "; C", c, "with demand:", projDemand[:, c, t],
-                        # "allocated to F", f, "requiring", round(reqHr,2), "production hours")
+                        #print("Rand Num", round(rand, 2), "; C", c, "with demand:", projDemand[:, c, t],
+                        #"allocated to F", f, "requiring", round(reqHr,2), "production hours")
                         break
             # fulfilment of current demand
-            # print()
+            #print()
             for f in range(self.p["nF"]):
                 completedOrder.extend(self.factory[f].produce(t, minPHr[f]))
                 # print()
@@ -121,16 +124,20 @@ class AllocProblem(Problem):
             # print()
         return completedOrder
 
-    def computePref(self, completedOrder):
+    def computePref(self, completedOrder, T):
         aveLT, unUtilHr = 0, 0
         # obj 1: average fulfilment lead time
-        aveLT = sum(o.fulfilmentTime for o in completedOrder)/ len(completedOrder)
+        aveLT = T
+        if len(completedOrder)> 0:
+            aveLT = sum(o.fulfilmentTime for o in completedOrder)/ len(completedOrder)
         # obj 2: average unutilized cap %
-        unUtilHr = sum(f.unUtilHr for f in self.factory)/ sum(f.totAvailHr for f in self.factory)
+        unUtilHr = 0
+        if sum(f.totAvailHr for f in self.factory) > 0:
+            unUtilHr = sum(f.unUtilHr for f in self.factory)/ sum(f.totAvailHr for f in self.factory)
 
         return aveLT, unUtilHr
 
-    def computePrefFact(self, completedOrder):
+    def computePrefFact(self, completedOrder, T):
         unUtilHr, aveLT = {}, {}
         dailyUnUtilHr, dailyOrderAlloc, dailyOrderFilled, dailyOrderFillTime = {}, {}, {}, {}
         completedOrderFact = {}
@@ -141,7 +148,9 @@ class AllocProblem(Problem):
             for o in completedOrder:
                 if o.fact == f: completedOrderFact[f].append(o)
 
-            aveLT[f] = sum(o.fulfilmentTime for o in completedOrderFact[f])/ len(completedOrderFact[f])
+            aveLT[f] = T
+            if len(completedOrderFact[f]) > 0:
+                aveLT[f] = sum(o.fulfilmentTime for o in completedOrderFact[f])/ len(completedOrderFact[f])
 
             dailyUnUtilHr[f], dailyOrderAlloc[f], dailyOrderFilled[f], dailyOrderFillTime[f] = [], [], [], []
 

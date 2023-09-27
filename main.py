@@ -25,7 +25,8 @@ tLT[0, 2], tLT[2, 0] = 3, 3
 param = {"nF": nFact, "nC": nCust, "nP": nPrdt,
          "tLT": tLT, "maxHr":np.array([10, 10, 10]),
          "pRate": np.array([[15.6, 5.2, 15.6], [10.4, 10.4, 5.2]]),
-         "aveD": np.array([[60, 20, 30], [40, 40, 10]]),
+         #"aveD": np.array([[60, 20, 30], [40, 40, 10]]),
+         "aveD": np.array([[200, 20, 30], [40, 40, 10]]),
          #"devD": np.array([[0.2, 0.2, 0.2], [0.2, 0.2, 0.2]])}
          "devD": np.array([[0.3, 0.2, 0.2], [0.1, 0.1, 0.1]])}
 
@@ -34,9 +35,10 @@ T = 20 #planning horizon length
 problem = mop.AllocProblem(param, R)
 #x1, y1 = planner.runNSGAII(problem, 50, 20)
 #x2, y2 = planner.runOpt(problem, 50, 20)
-x3, y3 = planner.runTransferOpt(problem, 50, 20)
-y3Ext = np.empty((x3.shape[0], 2*param["nF"]))
 
+x3, y3 = planner.runTransferOpt(problem, 50, 20)
+#y3Ext = np.empty((x3.shape[0], 2*param["nF"]))
+'''
 #get the factory level perf for each sol in PS
 for i in range(x3.shape[0]):
     alloc, minPHr = problem.decode(x3[i])
@@ -61,8 +63,10 @@ for i in range(x3.shape[0]):
     for f in range(param["nF"]):
         y3Ext[i, f*2] = aveLT[f]/R
         y3Ext[i, (f*2)+1] = aveUnUtilHr[f]/R
+'''
 
-#simulate actual scenario using first sol with a different random seed num, i.e. 11
+'''
+#simulate actual scenario using first sol with a different random seed num, i.e. 20
 x = x3[-1]
 alloc, minPHr = problem.decode(x)
 aveUnUtilHr, aveLT = {}, {}
@@ -70,18 +74,21 @@ for f in range(param["nF"]): aveUnUtilHr[f], aveLT[f] = 0, 0
 #print()
 np.random.seed(20)
 for f in problem.factory: f.reset()
-projDemandPlan = problem.simDemand(50)  # sample demand from distribution
+projDemandPlan = problem.simDemand(50, seed=20)  # sample demand from distribution
 #print()
-completedOrderPlan = problem.simPlan(projDemandPlan, alloc, minPHr, 50)  # simulate actual scenarios
+completedOrderPlan = problem.simPlan(projDemandPlan, alloc, minPHr, 50, seed=20)  # simulate actual scenarios
 # compute perf
 _, _, dailyUnUtilHr, dailyOrderAlloc, dailyOrderFilled, dalilyOrderFillTime = problem.computePrefFact(completedOrderPlan)
+'''
+
 
 import matplotlib.pyplot as plt
 #plt.scatter(y1[:,0], y1[:,1])
 #plt.scatter(y2[:,0], y2[:,1])
 plt.scatter(y3[:,0], y3[:,1])
-plt.legend(["no trasfer-Pymoo", "no trasfer", "with transfer"])
+#plt.legend(["no trasfer-Pymoo", "no trasfer", "with transfer"])
 plt.show()
+
 
 '''
 #find ref point

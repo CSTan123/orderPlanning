@@ -26,7 +26,7 @@ import numpy as np
 import model as mop
 import solve as planner
 #
-def plan(param, R=20, T=20, factPrefReq=True, allocRange=True):
+def plan(param, R=20, T=20, factPerfReq=True, allocRange=True):
     #initialise the oreder problem
     problem = mop.AllocProblem(param, R)
     x, scPerf = planner.runTransferOpt(problem, 50, 20) #gen, pop
@@ -39,7 +39,7 @@ def plan(param, R=20, T=20, factPrefReq=True, allocRange=True):
                 / x[i, param["nF"]*c : param["nF"]*c + param["nF"]].sum()
 
     factPerf = np.empty((x.shape[0], 2*param["nF"]))
-    if (factPrefReq):
+    if (factPerfReq):
         for i in range(x.shape[0]):
             alloc, minPHr = problem.decode(x[i])
             # run for "r" replications
@@ -52,7 +52,7 @@ def plan(param, R=20, T=20, factPrefReq=True, allocRange=True):
                 # print()
                 completedOrder = problem.simPlan(projDemand, alloc, minPHr, T)  # simulate planning scenarios
                 # compute perf
-                unUtilHr, lt, _, _, _, _ = problem.computePrefFact(completedOrder)
+                unUtilHr, lt, _, _, _, _ = problem.computePrefFact(completedOrder, T)
 
                 for f in range(param["nF"]):
                     aveLT[f] += lt[f]
